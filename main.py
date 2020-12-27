@@ -7,6 +7,8 @@ from models import LeNet
 from torch import nn
 from collections import defaultdict
 import matplotlib.pyplot as plt
+from config import cfg
+
 
 def train(model,train_loader,test_loader,optimizer,criterion):
 
@@ -15,13 +17,12 @@ def train(model,train_loader,test_loader,optimizer,criterion):
     testing_loss = defaultdict(int)
     testing_accuracy = defaultdict(int)
 
-    n_epochs = 10
-    for i in range(1,n_epochs):
+    for i in range(cfg['epochs']):
         print('Epoch', i)
 
         #training
         for idx, (images,labels) in enumerate(train_loader):
-            print('Index: ', idx * 64/60000)
+            print('Index: %d/%d'%(idx, len(train_loader)))
 
             optimizer.zero_grad()
 
@@ -38,6 +39,7 @@ def train(model,train_loader,test_loader,optimizer,criterion):
 
             loss.backward()
             optimizer.step()
+
         training_loss[i] /= len(train_loader)
         print(training_loss[i])
 
@@ -67,26 +69,26 @@ def main():
     test_MNIST =  torchvision.datasets.MNIST('data/', train = True, download = True, transform = transform)
 
     train_loader = torch.utils.data.DataLoader(train_MNIST,
-                                              batch_size=64,
+                                              batch_size=cfg['batch_size'],
                                               shuffle=True,
                                               num_workers=0)
     test_loader = torch.utils.data.DataLoader(test_MNIST,
-                                              batch_size=64,
+                                              batch_size=cfg['batch_size'],
                                               shuffle=True,
                                               num_workers=0)
 
     model = LeNet().cuda()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), 1.2e-3)
-
-    model,a,b,c = train(model, train_loader,test_loader, optimizer, criterion)
-    n_epochs = 10
-
-    print(a,b,c)
-
-    torch.save(model.state_dict(), './LeNet.pth')
+    optimizer = torch.optim.Adam(model.parameters(), cfg['learning_rate'])
 
 
+    model,training_loss, testing_loss, testing_accuracy = train(model, train_loader,test_loader, optimizer, criterion)
+
+    print(training_loss)
+    print(testing_loss)
+    print(testing_accuracy)
+
+    torch.save(model.state_dict(), './LeNet_%s_epochs_prune_percent_%s.pth'%(str(cfg['epochs']), str(cfg['prune_percent'])))
 
 
 if __name__ == '__main__':
